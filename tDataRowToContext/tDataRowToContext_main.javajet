@@ -1,0 +1,122 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		java.util.List 
+    	java.util.Map		
+	" 
+%>
+
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+    
+    String objectContext = ElementParameterParser.getValue(node, "__CONTEXT_VARIABLE__");
+  	
+	boolean input = (Boolean)ElementParameterParser.getObjectValue(node, "__INPUT__");
+  	boolean output = (Boolean)ElementParameterParser.getObjectValue(node, "__OUTPUT__");
+  	
+  	boolean clearCache = (Boolean)ElementParameterParser.getObjectValue(node, "__CLEAR_CACHE__");
+  	
+	IConnection inConn = null;
+	IConnection outConn = null;
+	
+	List<IMetadataTable> metadatas = node.getMetadataList();
+	
+	IMetadataTable metadata = metadatas.get(0);
+
+	List< ? extends IConnection> inConns = node.getIncomingConnections();
+	        //
+	List< ? extends IConnection> outConns = node.getOutgoingSortedConnections();
+				
+	
+	if(input){ //1 
+		
+    	if (metadata!=null) {//2
+			
+	        if (inConns != null && !inConns.isEmpty()) {
+	            inConn = inConns.get(0);
+	        }
+	        if (outConns != null && !outConns.isEmpty()) {
+	            outConn = outConns.get(0);
+	        }
+		        	        
+
+	        if(inConn != null ){ //3 
+	        	if(inConn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {//4	        			
+    	    		//List<IMetadataColumn> columns = metadata.getListColumns();
+    	    		IMetadataTable ref_metadata = inConn.getMetadataTable();
+    	    		List<IMetadataColumn> columns = ref_metadata.getListColumns();
+    	    		if(ref_metadata != null) {//5 %>
+    	    			
+						Object[] columnArray = new Object[<%=columns.size()%>];
+					<%	int columnNumber = 0;	
+	        	    	for(IMetadataColumn column : columns){//6 
+	        	    		//add a name mapping for issue:11712
+	        	    		if (ref_metadata.getColumn(column.getLabel()) != null) {//7 %>
+									
+									columnArray[<%=columnNumber%>] = <%=inConn.getName()%>.<%=column.getLabel()%>;
+									<% columnNumber++; %>	
+							<% if(outConn!=null){ %>
+									
+		    							<%=outConn.getName()%>.<%=column.getLabel()%> = <%=inConn.getName()%>.<%=column.getLabel()%>;
+						<%				
+								}	 
+								} //7  
+							}//6
+						%>
+							<%=cid%>_al.add(columnArray);
+						<%	
+	        			}//5
+	        		}//4
+				} //3
+			} //2
+ }else if(output){ //1 %>
+ 	
+ 	//Integer row = <%=cid%>_it.next();
+ 	Object[] objectArray = <%=cid%>_it.next();
+ 	
+ 	
+<%
+	if ((metadatas!=null)&&(metadatas.size()>0)) {//2
+    	if (metadata!=null) {//3
+			//in order to support the "Iterate/Main" at the same time.
+	        if (outConns != null && !outConns.isEmpty()) {
+	            outConn = outConns.get(0);
+	        }
+	        if(outConn != null){//4
+	        	if(outConn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) { //5	        			
+    	    		List<IMetadataColumn> columns = metadata.getListColumns();
+    	    	    	
+    	    	    	int columnNumber = 0;
+    	    	    	
+    	    	    	for(IMetadataColumn column : columns){ //6
+	        	    		//add a name mapping for issue:11712
+	        	    		
+	        	    		
+	        	    			String outTypeWhole = JavaTypesManager.getTypeToGenerate(column.getTalendType(), column.isNullable());
+								String outType = outTypeWhole.contains(".") ? outTypeWhole.substring(outTypeWhole.lastIndexOf(".") + 1) : outTypeWhole;
+								
+%>
+								<%=outConn.getName() %>.<%=column.getLabel() %> = (<%=outType %>)objectArray[<%=columnNumber%>]; 
+								
+								<% columnNumber++; %>
+									        					
+<%
+	        				
+	        		}//6
+	        	}//5
+			} //4
+		} //3
+	} //2
+ } //1		
+
+%>

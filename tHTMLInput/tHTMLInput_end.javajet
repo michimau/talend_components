@@ -1,0 +1,33 @@
+<%@ jet 
+imports="
+	org.talend.designer.codegen.config.CodeGeneratorArgument
+	org.talend.core.model.process.INode
+"
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+%>
+}
+globalMap.put("<%=cid %>_NB_LINE",nb_line_<%=cid %>);
+
+break;
+} 
+catch (java.lang.NullPointerException e_e_p){
+	if(die_<%=cid %>)
+	{		
+		//System.out.println("connection_or_document_Null_point_exception_3");
+		throw new Exception();		// it is actually java.lang.NullPointException but this exception is handled so to stop execution we throw unhandled exception Exception 
+	}
+	else
+	{		
+		//System.out.println("connection_or_document_Null_point_exception_2");
+		if (count_<%=cid %>++ == maxReTries_<%=cid %>)
+		{
+			e_e_p.printStackTrace();		
+			break;
+		}		
+	}
+}
+}

@@ -1,0 +1,42 @@
+<%@ jet
+        imports="
+                org.talend.core.model.process.INode
+                org.talend.core.model.process.ElementParameterParser
+                org.talend.designer.codegen.config.CodeGeneratorArgument
+         "
+%>
+
+<%
+        CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+        INode node = (INode)codeGenArgument.getArgument();
+        String cid = node.getUniqueName();
+        String clearCheckpointFile = ElementParameterParser.getValue(node, "__CLEAR_CHECKPOINT_FILE__");
+ %>
+
+/*
+ * Validate checkpoint.
+*/
+if(globalMap.get("tCheckpoint_checkpoint") == null || ((Integer) globalMap.get("tCheckpoint_checkpoint")).intValue() < 1)
+	throw new RuntimeException("<%=cid %>: you must have a tCheckpointStart and at least one tCheckpoint before ending a checkpoint series.");
+
+{
+	java.io.PrintWriter out = new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter((java.io.File) globalMap.get("tCheckpoint_checkpointFile"), ( ! "true".equals("<%=clearCheckpointFile %>")))));
+
+	try {
+	
+		String statusStr = "Checkpoint series ended.";
+	
+		out.println("0;END;" + statusStr);
+	}
+	finally {
+		out.close();
+
+		globalMap.remove("tCheckpoint_checkpointFile");
+		globalMap.remove("tCheckpoint_lastCheckpoint");
+		globalMap.remove("tCheckpoint_checkpoint");
+		globalMap.put("tCheckpoint_inRecovery", false);
+	}
+	//catch (IOException e) {
+	//	throw new RuntimeException("<%=cid %>: failed to write checkpoint file");
+	//}
+}

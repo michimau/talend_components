@@ -1,0 +1,31 @@
+<%@ jet 
+imports="
+    org.talend.core.model.process.INode 
+    org.talend.designer.codegen.config.CodeGeneratorArgument
+    org.talend.core.model.process.ElementParameterParser
+    org.talend.core.model.metadata.IMetadataTable 
+    org.talend.core.model.metadata.IMetadataColumn
+    java.util.List    
+"
+%>
+
+<%
+	CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+	INode node = (INode) codeGenArgument.getArgument();
+	String cid = node.getUniqueName();
+    String startPath = ElementParameterParser.getValue(node, "__JSON_START_PATH__");
+    if (startPath == null || startPath.trim().isEmpty()) {
+	    startPath = "null";
+    }
+    String excludeFieldList = ElementParameterParser.getValue(node, "__EXCLUDE_FIELD_LIST__");
+    String ignoreNullValues = ElementParameterParser.getValue(node, "__IGNORE_NULL_VALUES__");
+%>
+    int nb_line_<%=cid%> = 0;
+    int nb_parsed_<%=cid%> = 0;
+    de.jlo.talendcomp.json.JSONHelper <%=cid%> = new de.jlo.talendcomp.json.JSONHelper();
+    <%=cid%>.setStartPath(<%=startPath%>);
+    <%=cid%>.setIgnoreNullValues(<%=ignoreNullValues%>);
+    // setup exclude fields
+<%  if (excludeFieldList != null && excludeFieldList.isEmpty() == false) { %>
+    <%=cid%>.addExcludeFields(<%=excludeFieldList%>);
+<%  } %>

@@ -1,0 +1,342 @@
+<%@ jet
+imports="
+       org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		org.talend.core.model.utils.TalendTextUtils
+		java.util.List
+		java.util.Map
+"
+%>
+<% 
+	CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+	INode node = (INode)codeGenArgument.getArgument();
+	String cid = node.getUniqueName();
+	String timeout = ElementParameterParser.getValue(node, "__TIMEOUT__");
+	String uRL = ElementParameterParser.getValue(node, "__URL__");
+	String userAgent = ElementParameterParser.getValue(node, "__USER_AGENT__");
+	String maxBodySize = ElementParameterParser.getValue(node, "__MAX_BODY_SIZE__");
+	String parentElement = ElementParameterParser.getValue(node, "__PARENT_ELE__");
+	List<Map<String, String>> headerParams = (List<Map<String,String>>)ElementParameterParser.getObjectValue(node, "__MAPPING__");
+	String maxReTries = ElementParameterParser.getValue(node, "__RETRY_TIMES__");
+
+	List<IMetadataColumn> columnList = null;
+	List<IMetadataTable> metadatas = node.getMetadataList();
+
+	int metadatasSize = 0;
+
+	if(metadatas != null && metadatas.size() > 0) {
+		metadatasSize = metadatas.size();
+		IMetadataTable metadata = metadatas.get(0);
+
+		if(metadata != null) {
+			columnList = metadata.getListColumns();
+		}
+	}
+
+	List< ? extends IConnection> documentOutC = node.getOutgoingSortedConnections();
+
+	int documentOutCSize = 0;
+
+	if(documentOutC != null && documentOutC.size() > 0) {
+                documentOutCSize = documentOutC.size();
+        }   
+%>
+
+/*
+ * Dynamic Settings.
+ */
+Boolean followRedirects_<%=cid %> = false; 
+Boolean debug_<%=cid %> = false; 
+Boolean die_<%=cid %> = false; 
+
+<%
+if(node.getElementParameter("FOLLOW_REDIRECTS").isContextMode()) {
+%>
+	followRedirects_<%=cid %> = <%=ElementParameterParser.getValue(node, "__FOLLOW_REDIRECTS__") %>;
+<%
+}
+else {
+	if("true".equals(ElementParameterParser.getValue(node, "__FOLLOW_REDIRECTS__"))) {
+%>
+	followRedirects_<%=cid %> = true;
+<%
+	}
+}
+%>
+
+<%
+if(node.getElementParameter("DEBUG").isContextMode()) {
+%>
+	debug_<%=cid %> = <%=ElementParameterParser.getValue(node, "__DEBUG__") %>;
+<%
+}
+else {
+	if("true".equals(ElementParameterParser.getValue(node, "__DEBUG__"))) {
+%>
+	debug_<%=cid %> = true;
+<%
+	}
+}
+%>
+
+<%
+if(node.getElementParameter("DIE").isContextMode()) {
+%>
+	die_<%=cid %> = <%=ElementParameterParser.getValue(node, "__DIE__") %>;
+<%
+}
+else {
+	if("true".equals(ElementParameterParser.getValue(node, "__DIE__"))) {
+%>
+	die_<%=cid %> = true;
+<%
+	}
+}
+%>
+
+/*
+ * Initialisation.
+ */
+int nb_line_<%=cid %> = 0;
+
+/*
+ * Process document.
+ */
+// System.out.println("PASSED");
+int count_<%=cid %> = 0;
+int maxReTries_<%=cid %> = <%=maxReTries %>; // get it from number field
+
+while(true)
+{
+try {
+	
+org.jsoup.nodes.Document document_<%=cid %> = null;
+org.jsoup.Connection connection_<%=cid %> = null;
+
+String scheme_<%=cid %> = null;
+String host_<%=cid %> = null;
+Integer hTTPStatusCode_<%=cid %> = null;
+int parseStatus_<%=cid %> = 0;
+String parseErrorText_<%=cid %> = null;
+Date getTimestamp_<%=cid %> = null;
+Long getTime_<%=cid %> = null;
+//System.out.println("PASSED-1");
+
+try {
+	/*
+	 * Get scheme & host.
+	 */
+	java.net.URI uri = new java.net.URI(<%=uRL %>);
+	scheme_<%=cid %> = uri.getScheme();
+	host_<%=cid %> = uri.getHost();
+
+	/*
+	 * Connect.
+	 */
+	//document_<%=cid %> = org.jsoup.Jsoup.connect(<%=uRL %>).get();
+	connection_<%=cid %> = org.jsoup.Jsoup.connect(<%=uRL %>);
+    
+	/*
+	 * Set timeout.
+	 */
+	connection_<%=cid %>.timeout(<%=timeout %>);
+
+	/*
+	 * Set userAgent.
+	 */
+	if(<%=userAgent %> != null &&
+	   ! "null".equalsIgnoreCase(<%=userAgent %>.trim()) &&
+	   ! "".equalsIgnoreCase(<%=userAgent %>.trim())) connection_<%=cid %>.userAgent(<%=userAgent %>);
+
+	/*
+	 * Set followRedirects
+	 */
+	connection_<%=cid %>.followRedirects(followRedirects_<%=cid %>);
+ 
+	/*
+	 * Set maxBodySize
+	 */
+	<%
+	if(! "0".equals(maxBodySize)) {
+	%>
+		connection_<%=cid %>.maxBodySize(<%=maxBodySize %>);
+	<%
+	}
+	%>
+
+	/*
+	 * Set HTTP header values.
+	 
+	<%for (Map<String, String> header : headerParams){ // set request properties%>
+		connection_<%=cid%>.header(<%=header.get("HEADER_NAME")%>, <%=header.get("HEADER_VALUE")%>);
+	<%}%>
+ */
+
+	/*
+	 * Get document.
+	 */
+	getTimestamp_<%=cid %> = TalendDate.getCurrentDate();
+	if(debug_<%=cid %>) System.err.println("<%=cid %>: DEBUG: getting document " + <%=uRL %>);
+	document_<%=cid %> = connection_<%=cid %>.get();
+	hTTPStatusCode_<%=cid %> = connection_<%=cid %>.response().statusCode();
+	if(debug_<%=cid %>) System.err.println("<%=cid %>: DEBUG: request returned " + connection_<%=cid %>.response().statusCode());
+	getTime_<%=cid %> = TalendDate.getCurrentDate().getTime() - getTimestamp_<%=cid %>.getTime();
+    
+} 
+catch (java.lang.NullPointerException e_e_p){
+	System.out.println("connection_or_document_Null_point_exception_1");
+}
+catch (IllegalArgumentException e_<%=cid %>) {
+	//e_<%=cid %>.printStackTrace();
+	getTime_<%=cid %> = TalendDate.getCurrentDate().getTime() - getTimestamp_<%=cid %>.getTime();
+	parseStatus_<%=cid %> = 1;
+	parseErrorText_<%=cid %> = e_<%=cid %>.toString();
+}
+catch (IOException e_<%=cid %>) {
+	//e_<%=cid %>.printStackTrace();
+	getTime_<%=cid %> = TalendDate.getCurrentDate().getTime() - getTimestamp_<%=cid %>.getTime();
+
+
+	// TODO Could this thow an Exception
+	// JSoup appears to throw an exception for HTTP Status Code 304. This does not appear to be the documented outcome.
+	// Getting the stus here, after an exception appears to yield 0. We'll scan for 304s.
+	if(e_<%=cid %>.toString().contains("Status=304")) hTTPStatusCode_<%=cid %> = 304;
+	else hTTPStatusCode_<%=cid %> = connection_<%=cid %>.response().statusCode();
+
+	parseStatus_<%=cid %> = 1;
+	parseErrorText_<%=cid %> = e_<%=cid %>.toString();
+}
+catch (java.net.URISyntaxException e_<%=cid %>) {
+	System.out.println(<%=uRL %>);
+	//e_<%=cid %>.printStackTrace();
+	//getTime_<%=cid %> = TalendDate.getCurrentDate().getTime() - getTimestamp_<%=cid %>.getTime();
+	//parseStatus_<%=cid %> = 1;
+	//parseErrorText_<%=cid %> = e_<%=cid %>.toString();
+}
+
+//System.out.println("PASSED-2");	
+String temp_<%=cid %> = null;
+/*
+ * Write data.
+ */
+
+org.jsoup.select.Elements elements_<%=cid %> =null;
+<%
+if ("\"*\"".equalsIgnoreCase(parentElement))
+{
+%>
+	elements_<%=cid %> =document_<%=cid%>.body().children().select(<%=parentElement %>);
+	//System.out.println("metadatas"+elements_<%=cid %>);
+<%}
+else 
+{
+%>
+	elements_<%=cid %>=document_<%=cid %>.select(<%=parentElement %>);
+<%}
+%>
+
+
+for (org.jsoup.nodes.Element element_<%=cid%> : elements_<%=cid %>) 
+{ 
+ try{
+<%
+	if(documentOutC != null && documentOutC.size() > 0) 
+	{
+%>
+	
+   <%
+		for(IConnection documentOut : documentOutC) 
+		{
+       		if(documentOut.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) 
+			{
+				for (int valueN=0; valueN < columnList.size(); valueN++) 
+				{//FIM_001
+				    Map<String, String> header=headerParams.get(valueN);
+					IMetadataColumn column = columnList.get(valueN);
+					String typeToGenerate = JavaTypesManager.getTypeToGenerate(column.getTalendType(), column.isNullable());
+					JavaType javaType = JavaTypesManager.getJavaTypeFromId(column.getTalendType());
+					String patternValue = column.getPattern() == null || column.getPattern().trim().length() == 0 ? null : column.getPattern();
+					//String selectorstring =header.get(column.getLabel());
+					
+					if(javaType == JavaTypesManager.STRING || javaType == JavaTypesManager.OBJECT)
+					{
+						//if(valueN + 1 == columnList.size())
+						if(javaType == JavaTypesManager.OBJECT)
+						{
+%>
+		<%=documentOut.getName()%>.<%=column.getLabel() %> =element_<%=cid %>.select(<%=header.get("QUERY")%>);
+		
+<%                             
+						}
+						else 
+						{
+						   if(column.getLabel().equalsIgnoreCase("parseErrorText"))
+						    {
+%> 		//<%=documentOut.getName()%>.<%=column.getLabel() %> =parseErrorText_<%=cid %>;
+
+<%						
+							}
+							else 
+							{
+%> 		<%=documentOut.getName()%>.<%=column.getLabel() %> =element_<%=cid %>.select(<%=header.get("QUERY")%>).hasText()?element_<%=cid %>.select(<%=header.get("QUERY")%>).text():element_<%=cid %>.text();
+<%							
+							}
+						}
+					}
+					else
+					{ //FIM_006
+							if(javaType == JavaTypesManager.STRING || javaType == JavaTypesManager.OBJECT) 
+							{
+%>
+			<%=documentOut.getName()%>.<%=column.getLabel() %> = element_<%=cid %>.select(<%=header.get("QUERY")%>).text();
+<%							
+							}
+							else if(javaType == JavaTypesManager.BYTE_ARRAY)
+							{ 
+%>
+			<%=documentOut.getName()%>.<%=column.getLabel() %> = element_<%=cid %>.select(<%=header.get("QUERY")%>).text();
+<%
+							}else if(javaType == JavaTypesManager.DATE) 
+							{ 
+								
+%>
+			<%=documentOut.getName()%>.<%=column.getLabel() %> = element_<%=cid %>.select(<%=header.get("QUERY")%>).text();
+<%
+								
+							} 
+							else 
+							{
+%>
+			<%=documentOut.getName()%>.<%=column.getLabel() %> = element_<%=cid %>.select(<%=header.get("QUERY")%>).text();
+<%
+							}
+					} //FIM_006
+				}//FIM_001
+%>			
+			/*
+			* Data mapping.
+			*/
+
+			
+
+	<%
+		}
+	}
+	%>
+	} catch (Exception e_<%=cid %>) 
+	{                   
+		globalMap.put("<%=cid %>_PARSE_ERROR", e_<%=cid %>.getMessage());  
+		parseErrorText_<%=cid %> = e_<%=cid %>.toString();
+	    e_<%=cid %>.printStackTrace();
+	} 
+<%
+}
+
+%>

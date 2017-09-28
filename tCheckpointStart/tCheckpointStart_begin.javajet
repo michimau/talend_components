@@ -1,0 +1,86 @@
+<%@ jet
+        imports="
+                org.talend.core.model.process.INode
+                org.talend.core.model.process.ElementParameterParser
+                org.talend.designer.codegen.config.CodeGeneratorArgument
+         "
+%>
+
+<%
+        CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+        INode node = (INode)codeGenArgument.getArgument();
+        String cid = node.getUniqueName();
+        String checkpointDirectory = ElementParameterParser.getValue(node, "__CHECKPOINT_DIRECTORY__");
+        String checkpointFile = ElementParameterParser.getValue(node, "__CHECKPOINT_FILE__");
+ %>
+
+/*
+ * Validate checkpoint series.
+*/
+if(globalMap.get("tCheckpoint_checkpointFile") != null) throw new RuntimeException("<%=cid %>: you must end the current checkpoint series before starting a new one.");
+
+/*
+ * Set checkpoint file.
+ */
+if(<%=checkpointDirectory %> == null || "".equals(<%=checkpointDirectory %>.trim())) throw new RuntimeException("<%=cid %>: you must specify a checkpoint directory.");
+if(<%=checkpointFile %> == null || "".equals(<%=checkpointFile %>.trim())) globalMap.put("tCheckpoint_checkpointFile", new java.io.File(<%=checkpointDirectory %> + "/" + projectName + "." + jobName + ".checkpoint"));
+else globalMap.put("tCheckpoint_checkpointFile", new java.io.File(<%=checkpointDirectory %> + "/" + <%=checkpointFile %>));
+
+/*
+ * Process checkpoint file if it exists.
+ */
+    
+try {
+	java.io.BufferedReader tCheckpoint_input =  new java.io.BufferedReader(new java.io.FileReader((java.io.File)globalMap.get("tCheckpoint_checkpointFile")));
+
+	try {
+		String tCheckpoint_line = null;
+		String tCheckpoint_finalLine = null;
+
+		/*
+		 * Get the final line from the checkpoint file.
+		 */
+		while((tCheckpoint_line = tCheckpoint_input.readLine()) != null) tCheckpoint_finalLine = tCheckpoint_line;
+			
+		if(tCheckpoint_finalLine != null) {
+			String[] tCheckpoint_finalLineArr = tCheckpoint_finalLine.split(";");
+				
+			if(tCheckpoint_finalLineArr.length < 2) throw new RuntimeException("<%=cid %>: bad checkpoint record (" + tCheckpoint_finalLine + ")");
+				
+			/*
+			 * If the last run failed: -
+			 *
+			 * Place the last checkpoint and last checkpoint status on globalMap. These will always be the last checkpoint from a previous run. They will not
+			 * be updated during execution.
+			 *
+			 * If the last checkpoint status is END, then the Job finished normally, so there is no recovery needed.
+			 */
+			if("END".equals(tCheckpoint_finalLineArr[1])) globalMap.put("tCheckpoint_inRecovery", false);
+			else {
+				if("START".equals(tCheckpoint_finalLineArr[1])) globalMap.put("tCheckpoint_lastCheckpoint", new Integer(tCheckpoint_finalLineArr[0]));
+				else throw new RuntimeException("<%=cid %>: bad checkpoint record (" + tCheckpoint_finalLine + ")");
+
+				System.err.println("************************************");
+				System.err.println("*            tCheckpoint           *");
+				System.err.println("*  FINAL CHECKPOINT NOT COMPLETED  *");
+				System.err.println("*        RECOVERY REQUIRED         *");
+				System.err.println("*  CHECKPOINT " + String.format("%03d", (Integer) globalMap.get("tCheckpoint_lastCheckpoint")) + " NEEDS RECOVERING *");
+				System.err.println("************************************");
+
+				globalMap.put("tCheckpoint_inRecovery", true);
+			}
+		}
+	}
+	finally {
+		tCheckpoint_input.close();
+	}
+}
+catch (IOException tCheckpoint_ex) {
+
+	/*
+	 * TODO This is probably a little clumsy. If were on checkpoint #1, no we'll assume that there is no file. There could, or course,
+	 * be other IO issues e.g. no directory; but this is good enough. If we're on checkpoint #1, all is assumed good. Any other checkpoint and
+	 * we'll throw the exception.
+	*/
+	//System.err.println("no checkpoint file");
+}

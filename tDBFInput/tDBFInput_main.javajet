@@ -1,0 +1,181 @@
+<%@ jet 
+imports="
+    	org.talend.core.model.process.INode 
+    	org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType		
+		java.util.List
+		java.util.LinkedList
+		java.util.ArrayList
+		java.util.Map
+		"
+%>
+
+<%
+CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+INode node = (INode)codeGenArgument.getArgument();
+String cid = node.getUniqueName();
+%>
+java.util.LinkedList<java.util.Map<String,Object>> response_<%=cid %> = (java.util.LinkedList<java.util.Map<String,Object>>)api_<%=cid %>.getResponse();
+nb_line_<%=cid %>=response_<%=cid %>.size();
+		    for (int r_<%=cid %>=0;r_<%=cid %><response_<%=cid %>.size();r_<%=cid %>++){//for
+		  
+		    	java.util.Map<String,Object> row_<%=cid %> = response_<%=cid %>.get(r_<%=cid %>);
+
+		    	
+<%
+List<IMetadataTable> metadatas = node.getMetadataList();
+if ((metadatas!=null)&&(metadatas.size()>0)) {//1
+    IMetadataTable metadata = metadatas.get(0);
+    if (metadata!=null) {//2
+    
+            
+
+		
+    	List< ? extends IConnection> conns = node.getOutgoingSortedConnections();
+    	for (IConnection conn : conns) {//3
+    		if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {//4
+%>
+///////////////////////		
+						
+<%  
+    			List<IMetadataColumn> columns = metadata.getListColumns();
+    			int sizeColumns = columns.size();
+%>
+				Object crmReturnValue_<%=cid%> = null;
+<%    			
+    			for (int i = 0; i < sizeColumns; i++) {//5
+			IMetadataColumn column = columns.get(i);
+			String typeToGenerate = JavaTypesManager.getTypeToGenerate(column.getTalendType(), column.isNullable());
+					JavaType javaType = JavaTypesManager.getJavaTypeFromId(column.getTalendType());
+					String patternValue = column.getPattern() == null || column.getPattern().trim().length() == 0 ? null : column.getPattern();
+			
+%>
+				crmReturnValue_<%=cid%> = row_<%=cid  %>.get("<%=column.getLabel() %>");
+<%
+  			if(javaType == JavaTypesManager.STRING) { //String
+    				
+%>
+
+<%=conn.getName() %>.<%=column.getLabel() %>=(String)crmReturnValue_<%=cid%>;
+<%
+}else if(javaType == JavaTypesManager.DATE) { //Date
+%> 
+           
+				  if (crmReturnValue_<%=cid%>!=null){
+						try{
+							<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_Date(crmReturnValue_<%=cid%>.toString(), <%= patternValue %>);
+						}catch(Exception ex){
+							//nop
+						}
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+
+<%
+}else if ("id_Boolean".equals(column.getTalendType())){
+%>            
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Boolean)
+								<%=conn.getName() %>.<%=column.getLabel() %> = (Boolean)crmReturnValue_<%=cid%>;
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+}else if(javaType == JavaTypesManager.BYTE_ARRAY) { //byte[]
+%>
+					if (crmReturnValue_<%=cid%>!=null){
+						if (crmReturnValue_<%=cid%> instanceof String){
+							<%=conn.getName() %>.<%=column.getLabel() %> = crmReturnValue_<%=cid%>.toString().getBytes();
+						}else if (crmReturnValue_<%=cid%> instaceof byte[]){	
+							<%=conn.getName() %>.<%=column.getLabel() %> = (byte[])crmReturnValue_<%=cid%>;
+						}else{
+							<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}
+					}else
+						<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+} else if(javaType == JavaTypesManager.LONG) { //long
+%>
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Number)
+								<%=conn.getName() %>.<%=column.getLabel() %> = ((Number)crmReturnValue_<%=cid%>).longValue();
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+} else if(javaType == JavaTypesManager.FLOAT) { //float
+%>
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Number)
+								<%=conn.getName() %>.<%=column.getLabel() %> = ((Number)crmReturnValue_<%=cid%>).floatValue();
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+} else if(javaType == JavaTypesManager.SHORT) { //short
+%>
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Number)
+								<%=conn.getName() %>.<%=column.getLabel() %> = ((Number)crmReturnValue_<%=cid%>).shortValue();
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+} else if(javaType == JavaTypesManager.INTEGER) { //Integer
+%>
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Number)
+								<%=conn.getName() %>.<%=column.getLabel() %> = ((Number)crmReturnValue_<%=cid%>).intValue();
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+} else if(javaType == JavaTypesManager.BYTE) { //byte
+%>
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Number)
+								<%=conn.getName() %>.<%=column.getLabel() %> = ((Number)crmReturnValue_<%=cid%>).byteValue();
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+} else if(javaType == JavaTypesManager.DOUBLE) { //double
+%>
+						if (crmReturnValue_<%=cid%>!=null){
+							if (crmReturnValue_<%=cid%> instanceof Number)
+								<%=conn.getName() %>.<%=column.getLabel() %> = ((Number)crmReturnValue_<%=cid%>).doubleValue();
+							else
+								<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+						}else
+							<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+}else{
+%>
+					if (crmReturnValue_<%=cid%>!=null)
+						<%=conn.getName() %>.<%=column.getLabel() %> = ParserUtils.parseTo_<%= typeToGenerate %>(crmReturnValue_<%=cid%>.toString());
+					else
+						<%=conn.getName() %>.<%=column.getLabel() %> = null;
+<%
+}//else
+				}//5
+				%>
+				
+<%
+    		}//4
+		
+    	}//3
+    }//2
+}//1
+
+%>

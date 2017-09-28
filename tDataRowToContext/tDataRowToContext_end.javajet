@@ -1,0 +1,41 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		java.util.List 
+    	java.util.Map		
+	" 
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+    
+    String objectContext = ElementParameterParser.getValue(node, "__CONTEXT_VARIABLE__");
+  	
+	boolean input = (Boolean)ElementParameterParser.getObjectValue(node, "__INPUT__");
+  	boolean output = (Boolean)ElementParameterParser.getObjectValue(node, "__OUTPUT__");
+  	
+	boolean clearCache = (Boolean)ElementParameterParser.getObjectValue(node, "__CLEAR_CACHE__");
+	
+	if(input){ //1
+%>	 
+
+<%=objectContext%> = <%=cid%>_al; 
+
+<% }else if(output){ %>
+
+}
+
+if(<%=clearCache%>){
+	<%=cid%>_al.clear();
+} 
+
+<% } %>

@@ -1,0 +1,70 @@
+<COMPONENT>
+  <HEADER
+    PLATEFORM="ALL"
+    SERIAL=""
+    VERSION="0.101"
+    STATUS="ALPHA"
+    
+    COMPATIBILITY="ALL"
+    AUTHOR="Talend"
+    RELEASE_DATE="20070210A"
+    STARTABLE="true"
+  >
+    <SIGNATURE></SIGNATURE>
+  </HEADER>
+
+   <FAMILIES>
+    <FAMILY>Misc/Python</FAMILY>
+  </FAMILIES>
+  
+  <DOCUMENTATION>
+    <URL/>
+  </DOCUMENTATION>
+
+  <CONNECTORS>
+    <CONNECTOR CTYPE="FLOW" MAX_INPUT="1" MAX_OUTPUT="1"/>
+    <CONNECTOR CTYPE="ITERATE" MAX_OUTPUT="1" MAX_INPUT="1"/>
+    <CONNECTOR CTYPE="SUBJOB_OK" MAX_INPUT="1" />
+    <CONNECTOR CTYPE="SUBJOB_ERROR" MAX_INPUT="1" />
+    <CONNECTOR CTYPE="COMPONENT_OK"/>
+    <CONNECTOR CTYPE="COMPONENT_ERROR"/>
+    <CONNECTOR CTYPE="RUN_IF"/>
+  </CONNECTORS>
+
+  <PARAMETERS>
+
+    <PARAMETER
+      NAME="CODE"
+      FIELD="MEMO_JAVA"
+      REQUIRED="false"
+      NUM_ROW="2"
+      NB_LINES="9"
+      CONTEXT="begin"
+    >
+      <DEFAULT>// your Jython Code      
+//  from java.io import InputStream
+//class InfiniteOnes(InputStream):
+//    def read(self, *args):
+//        if len(args) > 0:
+//        # int read(byte[])
+//        # int read(byte[], int, int)
+//            return apply(InputStream.read, (self,)+args)
+//        return 1
+//io = InfiniteOnes()
+//for i in range(10):
+//    print io.read(),
+//print  
+      </DEFAULT>
+    </PARAMETER>
+
+   </PARAMETERS>   
+   <CODEGENERATION>
+   	<IMPORTS>		
+		<IMPORT NAME="Jython_Module" MODULE="jython.jar" REQUIRED="true" />
+		<IMPORT NAME="Jython_Module" MODULE="jythonlib.jar" REQUIRED="true" />
+		<IMPORT NAME="Jython_Module" MODULE="JythonInterpreter.jar" REQUIRED="true" />		
+     </IMPORTS>
+   </CODEGENERATION>
+   <RETURNS/>
+
+</COMPONENT>

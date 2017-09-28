@@ -1,0 +1,106 @@
+<%@ jet 
+imports="
+    	org.talend.core.model.process.INode 
+    	org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType		
+		java.util.List
+		java.util.Map
+		"
+%>
+<%
+CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+INode node = (INode)codeGenArgument.getArgument();
+String mashapekey = ElementParameterParser.getValue(node, "__MASHAPEKEY__");
+String pagenro = ElementParameterParser.getValue(node, "__PAGENRO__");
+String source = ElementParameterParser.getValue(node, "__FILENAME__");
+String debug = ElementParameterParser.getValue(node, "__DEBUG__");
+String schemafile = ElementParameterParser.getValue(node, "__SCHEMANAME__");
+String charset = ElementParameterParser.getValue(node, "__CHARSET__");
+String charsetName = ElementParameterParser.getValue(node, "__CHARSETNAME__");
+String cid = node.getUniqueName();
+if (!"CUSTOM".equals(charset))
+	charsetName=charset;
+%>
+int nb_line_<%=cid %>=0; 
+it.bisisoft.tdbfinput2.util.APIQuery api_<%=cid %> = null;
+java.util.Map<String,Object> field_<%=cid %> = new java.util.HashMap<String,Object>();
+field_<%=cid %>.put(it.bisisoft.tdbfinput2.util.APIQuery.DBFFILE,new java.io.File(<%=source%>));
+
+<%
+if (charset!=null && !"".equals(charset)){
+%>
+field_<%=cid %>.put(it.bisisoft.tdbfinput2.util.APIQuery.CHARSET,<%=charset%>);
+<%
+}
+%>
+
+<%
+if (pagenro!=null && !"".equals(pagenro)){
+%>
+field_<%=cid %>.put(it.bisisoft.tdbfinput2.util.APIQuery.PAGENRO,<%=pagenro%>);
+<%
+}
+%>
+
+<%
+if ("true".equals(debug) && schemafile!=null && !"".equals(schemafile)){
+%>
+field_<%=cid %>.put(it.bisisoft.tdbfinput2.util.APIQuery.SCHEMAFILE,<%=schemafile%>);
+<%
+}
+%>
+
+<%
+if ("true".equals(debug)){
+%>
+api_<%=cid %> = new it.bisisoft.tdbfinput2.util.APIQuery(null,<%=schemafile%>);
+
+<%
+}else{//costruisco lo schema
+%>
+
+it.bisisoft.tdbfinput2.util.SchemaGenerator generator_<%=cid %> = new it.bisisoft.tdbfinput2.util.SchemaGenerator();
+
+<%
+List<IMetadataTable> metadatas = node.getMetadataList();
+if ((metadatas!=null)&&(metadatas.size()>0)) {//1
+    IMetadataTable metadata = metadatas.get(0);
+    if (metadata!=null) {//2
+		
+    	List< ? extends IConnection> conns = node.getOutgoingSortedConnections();
+    	for (IConnection conn : conns) {//3
+    		if (conn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {//4
+
+    			List<IMetadataColumn> columns = metadata.getListColumns();
+    			int sizeColumns = columns.size();
+   			
+    			for (int i = 0; i < sizeColumns; i++) {//5
+			      IMetadataColumn column = columns.get(i);
+			      String pattern=column.getPattern();
+			      if (pattern!=null && "".equals(pattern.trim())){
+			      	pattern=null;
+			      }
+			      String length=(column.getLength()!=null ? "new Integer("+column.getLength()+")" : "null");
+			      String precision=(column.getPrecision()!=null ? "new Integer("+column.getPrecision()+")" : "null");
+%>
+		generator_<%=cid %>.addColumn("<%=column.getLabel() %>","<%=column.getTalendType()%>",<%=pattern%>,<%=length%>,<%=precision%>);
+<%
+}//5
+}//4
+}//3
+}//2
+}//1
+%>
+	api_<%=cid %> = new it.bisisoft.tdbfinput2.util.APIQuery(generator_<%=cid %>.getSchema(),"schema_"+"<%=cid %>"+".xml");
+<%
+}//else
+%>
+
+api_<%=cid %>.connect(<%=mashapekey%>,field_<%=cid %>);
+

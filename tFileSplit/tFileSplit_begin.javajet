@@ -1,0 +1,182 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode
+		org.talend.core.model.process.ElementParameterParser
+		org.talend.core.model.metadata.IMetadataTable
+		org.talend.core.model.metadata.IMetadataColumn
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.core.model.metadata.builder.database.ExtractMetaDataUtils
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+    	java.util.Map
+    	java.util.List;
+	" 
+
+	
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+    String filename = ElementParameterParser.getValue(node, "__FILENAME__");
+	String parts = ElementParameterParser.getValue(node, "__PARTS__");
+	String dirnameout = ElementParameterParser.getValue(node, "__DIRNAME_OUT__");
+%>
+int nb_line_<%=cid%> = 0;
+String filename_<%=cid%> = <%=filename%>;
+String parts_<%=cid%> = <%=parts%>;
+String dirnameout_<%=cid%> = <%=dirnameout%>;
+
+
+		
+class FileSplit_<%=cid%>  {
+
+	String sTmp = null ;  
+	String dirnameout = null ;
+	int parts ;
+	String newLine = System.getProperty("line.separator"); // lecture du séparateur de lignes du système
+	
+	void Set_parts_( String parts_ ){	
+		this.parts = Integer.parseInt(parts_) ; 
+		//trace("Set_parts_ : " + this.parts );
+	}
+	
+	void Set_dirnameout_( String dirnameout_ ){	
+		this.dirnameout = dirnameout_ ; 
+		//trace("Set_dirnameout_ : " + this.dirnameout );
+	}
+	
+	void trace(String msg){
+	
+		StringBuilder strBuffer = new StringBuilder();
+		java.io.PrintStream consoleOut = null;
+		consoleOut = new java.io.PrintStream(new java.io.BufferedOutputStream(System.out));
+		strBuffer.append( " Trace - " + msg +"\n ");
+		consoleOut.println(" -> BEGIN : \n " + strBuffer.toString());
+        consoleOut.flush();
+        
+	}
+	
+	void ecrire_fichier( String fichier, String texte)
+	{   
+		//trace("ecrire_fichier : " +  texte); 		
+		String fileout =  fichier ;
+		//on met try si jamais il y a une exception
+		try
+		{
+			/**
+			 * BufferedWriter a besoin d un FileWriter, 
+			 * les 2 vont ensemble, on donne comme argument le nom du fichier
+			 * true signifie qu on ajoute dans le fichier (append), on ne marque pas par dessus 
+			 */
+			java.io.FileWriter fw = new java.io.FileWriter(fileout, true);
+			
+			// le BufferedWriter output auquel on donne comme argument le FileWriter fw cree juste au dessus
+			java.io.BufferedWriter output = new java.io.BufferedWriter(fw);
+			
+			//on marque dans le fichier ou plutot dans le BufferedWriter qui sert comme un tampon(stream)
+			output.write(texte);
+			//on peut utiliser plusieurs fois methode write
+			
+			output.flush();
+			//ensuite flush envoie dans le fichier, ne pas oublier cette methode pour le BufferedWriter
+			
+			output.close();
+			//et on le ferme
+			//trace("ecrire : fichier créé "  ); 
+		}
+		catch(IOException ioe){
+			trace("ecrire : IOException  " + ioe); 
+			//ioe.printStackTrace();
+		}
+
+	}
+	
+	void lire_fichier(String entree)	{
+
+		String line="";
+		int k = 0 ;
+        int i = 0 ;
+        StringBuffer fileContent = new StringBuffer();	
+ 
+		//trace("lire_fichier : " +  entree); 		
+		
+		// decouper le nom du fichier d'entrée pour 
+		// fabriquer le nom du fichier de sortie
+		
+		int entreeLEN=entree.length()-4;
+		String entreeTMP=entree.substring(0,entreeLEN);
+ 
+		String sortie=entreeTMP+"_"+i+".csv";
+		
+		String fileName = new java.io.File(sortie).getName();
+		
+		if ( System.getProperty("os.name").startsWith("Win")){
+			sortie = this.dirnameout+"//"+ fileName;
+		}
+		else{
+			sortie = this.dirnameout+"\\"+ fileName;
+		}
+		
+		//trace("lire_fichier :sortie " + sortie); 	
+        
+        	
+		java.io.BufferedReader br = null;
+		
+		try{
+            //trace("lire_fichier :sortietry " + sortie); 	
+			java.io.InputStream ips=new java.io.FileInputStream(entree); 
+			java.io.InputStreamReader ipsr=new java.io.InputStreamReader(ips);
+			br=new java.io.BufferedReader(ipsr);
+			
+			while ((line=br.readLine())!=null){
+			        fileContent.append(line + newLine);
+					 
+				if (k++>= this.parts ){
+				// increment de l'occurrence des fichiers de sortie
+					i++;
+
+				// créer le nouveau nom du fichier de sortie
+					sortie=entreeTMP+"_"+i+".csv";	
+					fileName = new java.io.File(sortie).getName();
+					if ( System.getProperty("os.name").startsWith("Win")){
+						sortie = this.dirnameout+"//"+ fileName;
+					}
+					else{
+						sortie = this.dirnameout+"\\"+ fileName;
+					}
+					
+					//ecrire_fichier(sortie, line);
+					ecrire_fichier(sortie, fileContent.toString());
+					fileContent = new StringBuffer();
+					k=0;
+				}
+
+				
+
+			}
+
+			}		
+			catch (Exception e){
+				//e.printStackTrace();
+				trace("lire : IOException  " + e);
+			}
+			finally
+			{
+				try {
+					br.close();
+				} catch (IOException e) {
+					//e.printStackTrace();
+					trace("lire : IOException  " + e);
+				} 
+			}
+	}
+}
+
+FileSplit_<%=cid%> FileSplit_<%=cid%> = new FileSplit_<%=cid%>();
+FileSplit_<%=cid%>.Set_parts_( parts_<%=cid%> );
+FileSplit_<%=cid%>.Set_dirnameout_( dirnameout_<%=cid%> );
+FileSplit_<%=cid%>.lire_fichier ( filename_<%=cid%> );
+ 

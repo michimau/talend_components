@@ -1,0 +1,77 @@
+<%@ jet 
+imports="
+	org.talend.core.model.process.EConnectionType
+    org.talend.core.model.process.INode 
+    org.talend.core.model.process.ElementParameterParser 
+    org.talend.core.model.metadata.IMetadataTable 
+    org.talend.core.model.metadata.IMetadataColumn 
+    org.talend.designer.codegen.config.CodeGeneratorArgument
+    org.talend.core.model.process.IConnection
+    org.talend.core.model.metadata.types.JavaTypesManager
+    org.talend.core.model.metadata.types.JavaType    
+    java.util.List
+    org.talend.core.model.process.IConnectionCategory
+    org.talend.core.model.utils.NodeUtil
+" 
+%>
+
+<%
+CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+INode node = (INode)codeGenArgument.getArgument();
+String cid = node.getUniqueName();
+String jsonInput = ElementParameterParser.getValue(node, "__JSON_INPUT_COLUMN__");
+String keyPathDelimiter = ElementParameterParser.getValue(node, "__JSON_PATH_DELIMITER__");
+boolean allowEmpty = "true".equals(ElementParameterParser.getValue(node, "__ALLOW_EMPTY__"));
+String incomingConnName = null;
+String outgoingConnName = null;
+List<? extends IConnection> inConns = node.getIncomingConnections();
+if (inConns != null && inConns.isEmpty() == false) {
+    IConnection inConn = inConns.get(0);
+    incomingConnName = inConn.getName();
+}
+List<? extends IConnection> outConns = NodeUtil.getOutgoingConnections(node, IConnectionCategory.DATA);
+if (outConns != null && outConns.isEmpty() == false) {
+    IConnection outConn = outConns.get(0);
+    outgoingConnName = outConn.getName();
+}
+List<IMetadataTable> metadatas = node.getMetadataList();
+if (metadatas != null && metadatas.isEmpty() == false) {
+    IMetadataTable metadata = metadatas.get(0);
+    List<IMetadataColumn> metadataColumns = metadata.getListColumns(); %>
+    
+    // get JSON or BSON from stream
+    Object input_<%=cid%> = <%=incomingConnName%>.<%=jsonInput%>;
+    // create empty list to support null in input values
+    java.util.List<de.jlo.talendcomp.json.JSONValue> result_<%=cid%> = new java.util.ArrayList<de.jlo.talendcomp.json.JSONValue>();
+    if (input_<%=cid%> instanceof String) {
+        result_<%=cid%> = <%=cid%>.traverse((String) input_<%=cid%>);
+        nb_parsed_<%=cid%>++;
+    } else if (input_<%=cid%> instanceof org.bson.BSONObject) {
+        result_<%=cid%> = <%=cid%>.traverse((org.bson.BSONObject) input_<%=cid%>);
+        nb_parsed_<%=cid%>++;
+    } else if (input_<%=cid%> != null) {
+    	throw new Exception("Input column contains no possible JSON input types: String or BSONObject");
+    }
+<%  if (allowEmpty) { %> 
+    if (result_<%=cid%>.size() == 0) {
+        result_<%=cid%>.add(<%=cid%>.getDummyValue());
+    }
+<%  } %>
+    // iterate through all key value objects
+    for (de.jlo.talendcomp.json.JSONValue value_<%=cid%> : result_<%=cid%>) {
+        nb_line_<%=cid%>++;
+		<%=outgoingConnName%> = new <%=outgoingConnName%>Struct();
+<%  if (metadataColumns != null && metadataColumns.size() > 0) {
+    	for (IMetadataColumn metadataColumn : metadataColumns) {
+            if ("JSON_PATH".equals(metadataColumn.getLabel())) { %>
+        <%=outgoingConnName%>.JSON_PATH = value_<%=cid%>.getKeyPath(<%=keyPathDelimiter%>); 
+<%          } else if ("JSON_KEY".equals(metadataColumn.getLabel())) { %>            
+    	<%=outgoingConnName%>.JSON_KEY = value_<%=cid%>.getKey();
+<%          } else if ("JSON_VALUE".equals(metadataColumn.getLabel())) { %>            
+    	<%=outgoingConnName%>.JSON_VALUE = value_<%=cid%>.getValueString();
+<%          } else { %>            
+		<%=outgoingConnName%>.<%=metadataColumn.getLabel()%> = <%=incomingConnName%>.<%=metadataColumn.getLabel()%>;
+<%          }           
+        }
+    }
+} %>

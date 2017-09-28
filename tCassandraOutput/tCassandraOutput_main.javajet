@@ -1,0 +1,58 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		java.util.List 
+    	java.util.Map		
+	" 
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+    String batchSize = ElementParameterParser.getValue(node,"__BATCH_SIZE__");
+    String keyColumn = ElementParameterParser.getValue(node,"__KEY_COLUMN__");
+    String columnFamily = ElementParameterParser.getValue(node,"__COLUMN_FAMILY__");
+    boolean incKey = "true".equalsIgnoreCase(ElementParameterParser.getValue(node,"__INC_KEY__"));
+%>
+String key_<%=cid%>;
+String value_<%=cid%>;
+<%    
+    if (node.getIncomingConnections() != null) {
+      for (IConnection incomingConn : node.getIncomingConnections()) {
+          String conName = incomingConn.getName();
+%>
+		key_<%=cid%> = <%=conName%>.<%=keyColumn%> != null ? <%=conName%>.<%=keyColumn%>.toString() : null;
+		if (key_<%=cid%> != null) {
+<%
+          if (incomingConn.getLineStyle().hasConnectionCategory(IConnectionCategory.DATA)) {
+          	IMetadataTable inputMetadataTable = incomingConn.getMetadataTable();
+    		
+    		for (IMetadataColumn inputCol : inputMetadataTable.getListColumns()) {
+        		if (incKey || !inputCol.getLabel().equals(keyColumn)) {
+      %>
+          value_<%=cid%> = <%=conName%>.<%=inputCol.getLabel()%> == null ? null : <%=conName%>.<%=inputCol.getLabel()%>.toString();
+          mutator_<%=cid%>.addInsertion(key_<%=cid%>, <%=columnFamily%>,
+          	me.prettyprint.hector.api.factory.HFactory.createStringColumn("<%=inputCol.getLabel()%>",value_<%=cid%>));
+          
+      <%
+             	}
+           }
+           %>
+           }
+           <%
+         }
+      }
+    }
+%>
+if (batchCounter_<%=cid%>++ == <%=batchSize%>) {
+  mutator_<%=cid%>.execute();
+  batchCounter_<%=cid%> = 0;
+}
