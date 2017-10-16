@@ -1,0 +1,37 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		java.util.List 
+    	java.util.Map		
+	" 
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+%>
+}//4 - end while from begin
+ 
+ input_xml_<%=cid%>.close();
+ output_xml_<%=cid%>.close();
+		    
+ java.io.File FICHIER_<%=cid%> = new java.io.File(filenamexml<%=cid%>); 
+ 
+ if( FICHIER_<%=cid%>.exists() ) {
+	 FICHIER_<%=cid%>.delete();
+ }
+		    
+}catch (java.io.IOException e){
+			
+	My_Input_Odt_<%=cid%>.trace("IOException " + e);
+}
+		
+globalMap.put("<%=cid%>_NB_LINE", nb_line_<%=cid%>);

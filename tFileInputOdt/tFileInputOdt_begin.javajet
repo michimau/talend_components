@@ -1,0 +1,142 @@
+<%@ jet 
+	imports="
+		org.talend.core.model.process.INode 
+		org.talend.core.model.process.ElementParameterParser 
+		org.talend.core.model.metadata.IMetadataTable 
+		org.talend.core.model.metadata.IMetadataColumn 
+		org.talend.core.model.process.IConnection
+		org.talend.core.model.process.IConnectionCategory
+		org.talend.designer.codegen.config.CodeGeneratorArgument
+		org.talend.core.model.metadata.types.JavaTypesManager
+		org.talend.core.model.metadata.types.JavaType
+		java.util.List 
+    	java.util.Map		
+	" 
+%>
+<% 
+    CodeGeneratorArgument codeGenArgument = (CodeGeneratorArgument) argument;
+    INode node = (INode)codeGenArgument.getArgument();
+    String cid = node.getUniqueName();	
+        
+    String filename = ElementParameterParser.getValueWithUIFieldKey(node,"__FILENAME__", "FILENAME");
+    
+%>
+
+int nb_line_<%=cid%> = 0;
+
+String filename<%=cid%> = <%=filename%> ;
+String filenamexml<%=cid%> = filename<%=cid%>.replace(".odt",".xml") ;
+
+class Input_Odt_<%=cid%>  {
+
+	String sOdt = null ; 
+	String sOdtXml = null ; 
+	String line = null  ;
+	boolean display = false ;
+	
+	void trace(String msg){
+	
+		StringBuilder strBuffer = new StringBuilder();
+		java.io.PrintStream consoleOut = null;
+		consoleOut = new java.io.PrintStream(new java.io.BufferedOutputStream(System.out));
+		strBuffer.append( " Trace - " + msg +"\n ");
+		consoleOut.println(" -> \n " + strBuffer.toString());
+        consoleOut.flush();
+	}
+	
+	void Set_odt_( String sOdt_ ,String sOdtxml_){	
+		this.sOdt = sOdt_ ; 
+		this.sOdtXml = sOdtxml_ ; 
+	}
+
+	String Get_odt_(){	
+		return this.sOdt ; 
+	}
+	
+	String Get_odtXml_(){	
+		return this.sOdtXml ; 
+	}
+	
+	String Get_data(java.io.BufferedReader BReader){
+	try{
+	    this.line = BReader.readLine() ;
+	    
+	     if ( this.line == null ){
+	      	return this.line;
+	     }
+	     
+	     //trace( "-- " +this.line );
+	     
+	    if ( this.line.indexOf("<text:") != -1  && this.line.indexOf("</text:") != -1 ){
+		    this.line = this.line.substring(this.line.indexOf(">")+1,this.line.indexOf("</")) ;
+		    //trace(" line  ----> " + this.line);
+		    this.display = false;
+		    return this.line ;
+		    
+		}else if ( this.line.indexOf("<") == -1  || this.line.indexOf(">") == -1 ){
+		    this.line = this.line ;
+		    //trace(" line  ----> " + this.line);
+		    this.display = false;
+		    return this.line ;
+		    
+		    // 20170524 Sometime the readable data is not between xml tag
+		 
+		 }else if ( line.indexOf("<text:soft-page-break />") != -1 ){
+			 this.display = true;
+			 return "";
+		 }else if (this.display) {
+		 	this.display = false;
+		 	 return this.line ;
+		 }else{
+		  	this.display = false;
+		 	return "";
+		 }
+	    
+	   }catch (java.io.IOException e){
+			
+		trace("IOException " + e);
+		return "";
+	   }
+	
+	}
+	
+	void set_bool(boolean display_){
+		this.display=display_;
+	}
+
+	String Get_line(){
+		return this.line ;
+	}
+}
+
+
+Input_Odt_<%=cid%> My_Input_Odt_<%=cid%> = new Input_Odt_<%=cid%>();
+My_Input_Odt_<%=cid%>.Set_odt_( filename<%=cid%>, filenamexml<%=cid%>  );
+
+org.jopendocument.dom.ODSingleXMLDocument xmldoc_<%=cid%> = new org.jopendocument.dom.ODPackage(new java.io.File(My_Input_Odt_<%=cid%>.Get_odt_()) ).toSingle();
+
+try{
+org.jdom.Document document_<%=cid%> = xmldoc_<%=cid%>.getDocument();
+org.jdom.output.XMLOutputter sortie_<%=cid%> = new org.jdom.output.XMLOutputter(org.jdom.output.Format.getPrettyFormat());
+// sortie_<%=cid%>.output(document_<%=cid%>, System.out);
+ 
+java.io.File fmy_ODT_XML_<%=cid%> = new java.io.File(My_Input_Odt_<%=cid%>.Get_odtXml_());
+fmy_ODT_XML_<%=cid%>.createNewFile(); 
+java.io.BufferedOutputStream output_xml_<%=cid%> = new java.io.BufferedOutputStream(new java.io.FileOutputStream(fmy_ODT_XML_<%=cid%>));
+sortie_<%=cid%>.output(document_<%=cid%>, output_xml_<%=cid%>);
+		    
+java.io.BufferedInputStream input_xml_<%=cid%> = new java.io.BufferedInputStream(new java.io.FileInputStream(fmy_ODT_XML_<%=cid%>));
+		    	    
+java.io.BufferedReader BReader_<%=cid%> = new java.io.BufferedReader ( new java.io.InputStreamReader(input_xml_<%=cid%>,java.nio.charset.Charset.forName("UTF-8")));
+		    
+String line_<%=cid%> =null  ;
+boolean display_<%=cid%> = false;
+My_Input_Odt_<%=cid%>.set_bool(display_<%=cid%>);
+/// Play Main for Each data line 
+while ( (line_<%=cid%> = My_Input_Odt_<%=cid%>.Get_data(BReader_<%=cid%>)) != null ) {//4
+
+if( line_<%=cid%>.equals("") ){
+	continue;
+}
+
+
